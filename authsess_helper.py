@@ -1,7 +1,9 @@
 import httpx
 
 class LoginHelper:
-    """ **Parameters**\n
+    """
+    A session builder for using/re-using an authenticated session\n\n
+    **Parameters**\n
     * **url_login**-*[Required]* URL for sending authentication data payload
     * **url_login**-*[Required]* Fallback URL if authentication failed (status code 401)
     * **url_logout**-*[Required]* URL to logout
@@ -29,6 +31,12 @@ class LoginHelper:
             return resp
         
     def login(self, username:str, password:str):
+        """
+        Method for sending given auth data to the host\n\n
+        **Parameters**\n
+        * **username**-*[Required]* user/id/email
+        * **password**-*[Required]* password/token/credential
+        """
         auth_data = {}
         auth_data['username'] = str(username)
         auth_data['password'] = str(password)       
