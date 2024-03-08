@@ -4,6 +4,7 @@
 *test.py
 *.ipynb
 *.pdf
+*test*
 .conda
 .vscode
 __pycache__/
