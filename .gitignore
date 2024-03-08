@@ -1,0 +1,10 @@
+*.env
+*.log
+*.xlsx
+*test.py
+*.ipynb
+*.pdf
+.conda
+.vscode
+__pycache__/
+certicates/
