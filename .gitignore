@@ -1,6 +1,6 @@
 *.env
 *.log
-*.xlsx
+*.csv
 *test.py
 *.ipynb
 *.pdf
