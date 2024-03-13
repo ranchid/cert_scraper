@@ -10,4 +10,7 @@ Simple script for automation docs scrapping and parsing content data. The code h
 ## Usage
 * head to repo directory
 * run `python main.py list_of_id.txt` on terminal to run it as-is .env configuration
+    * after process completed successfully file will be saved at specified DOWNLOAD_DIR path on .env file
+    * report will be saved at [project root's directory]/report_TIMESTAMP.csv
 * run `python main.py -h` show help message
+    * if any error or malfunction you can inspect scrap.log file
