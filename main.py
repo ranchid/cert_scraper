@@ -97,10 +97,9 @@ def report_builder(file_path:str) -> list:
     logging.info(f"Report written with name report_{now}.csv")
     # return report
 
-def main(datasource, write_report:str=None,
-         batch_size:int=os.getenv('MAX_CONNECTION'),
-         user:str=os.getenv('IDENTIFIER'), pswd:str=os.getenv('SECRETS'),
-         download_path:str = f"{os.getcwd()}/{download_dir}/{year_issued}"):
+def main(datasource, batch_size:int, user:str, pswd:str,
+         download_path:str=f"{os.getcwd()}/{download_dir}/{year_issued}",
+         write_report:str=None):
     
     if not os.path.exists(download_path):
         os.makedirs(download_path)
@@ -144,9 +143,12 @@ def main(datasource, write_report:str=None,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Certificate Scrapper and Data Parser')
-    parser.add_argument('filename', help="Specify filaname that contains list of id to scrape")
-    parser.add_argument('-n', '--batch', type=int, required=False, help="[Optinal] Override maximum n-value on .env per batch processing")
-    parser.add_argument('-u', '--user', type=str, required=False, help="[Optional] Override .env's user/identifier")
-    parser.add_argument('-p', '--password', type=str, required=False, help="[Optional] Override .env's password/secrets")
+    parser.add_argument('filename', help="[Required] Specify filaname that contains list of id to scrape")
+    parser.add_argument('-n', '--batch', type=int, default=os.getenv('BATCH_SIZE'), help="[Optinal] Override maximum n-value on .env per batch processing")
+    parser.add_argument('-u', '--user', type=str, default=os.getenv('IDENTIFIER'), help="[Optional] Override .env's user/identifier")
+    parser.add_argument('-p', '--password', type=str, default=os.getenv('SECRETS'), help="[Optional] Override .env's password/secrets")
     args = parser.parse_args()
-    main(args.filename, args.batch, args.user, args.password)
+    try:
+        main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password)
+    except KeyboardInterrupt:
+        logging.warning('Process interupted by user')
