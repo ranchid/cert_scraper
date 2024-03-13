@@ -148,7 +148,8 @@ if __name__ == "__main__":
     parser.add_argument('-u', '--user', type=str, default=os.getenv('IDENTIFIER'), help="[Optional] Override .env's user/identifier")
     parser.add_argument('-p', '--password', type=str, default=os.getenv('SECRETS'), help="[Optional] Override .env's password/secrets")
     args = parser.parse_args()
+    answer = input('No new file(s) detected,\nDo you still want to generate report file? (y|N) ')
     try:
-        main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password)
+        main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password, write_report=answer)
     except KeyboardInterrupt:
         logging.warning('Process interupted by user')
