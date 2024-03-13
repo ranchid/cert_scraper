@@ -144,7 +144,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Certificate Scrapper and Data Parser')
     parser.add_argument('filename', help="[Required] Specify filaname.txt that contains list of id to scrape")
-    parser.add_argument('-n', '--batch', type=int, default=os.getenv('BATCH_SIZE'), help="[Optinal] Override maximum n-value on .env per batch processing")
+    parser.add_argument('-n', '--batch', type=int, default=os.getenv('BATCH_SIZE'), help="[Optional] Override maximum n-value on .env per batch processing")
     parser.add_argument('-u', '--user', type=str, default=os.getenv('IDENTIFIER'), help="[Optional] Override .env's user/identifier")
     parser.add_argument('-p', '--password', type=str, default=os.getenv('SECRETS'), help="[Optional] Override .env's password/secrets")
     args = parser.parse_args()
