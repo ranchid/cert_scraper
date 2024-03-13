@@ -20,13 +20,14 @@ class CertGrabber:
     async def grab_certificate(self, owner_id:str, dirpath:str) -> dict:        
         filepath =f"{dirpath}/{owner_id}.pdf"        
         async with httpx.AsyncClient(headers=self.cust_header, timeout=None) as downloader:
-            dl = await downloader.get(url=f"{self.cert_url}_{owner_id}_signed.pdf")
-            if dl.status_code == 200:
-                with open(filepath, "b+w") as f:
-                    try:
-                        logging.info(f'Writing {owner_id}.pdf ...')
+            try:
+                dl = await downloader.get(url=f"{self.cert_url}_{owner_id}_signed.pdf", timeout=5.0)
+                if dl.status_code == 200:                
+                    with open(filepath, "b+w") as f:                        
+                        logging.info(f'Writing {owner_id}.pdf ...')                    
                         f.write(dl.content)
                         f.close
-                        logging.info(f"File succesfully saved at {os.path.relpath(filepath)}")           
-                    except:
-                        logging.error(f'{owner_id}.pdf failed to download')
+                        logging.info(f"File succesfully saved at {os.path.relpath(filepath)}")
+                        return owner_id
+            except:
+                logging.error(f'Failed to get {owner_id}.pdf')
