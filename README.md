@@ -8,7 +8,7 @@ Simple script for automation docs scrapping and parsing content data. The code h
 * Copy .env.sample to .env `cp .env.sample .env` and edit necessary parameter to change.
 
 ## Usage
-* head to repo directory
+* head to project root's directory
 * run `python main.py list_of_id.txt` on terminal to run it as-is .env configuration
     * after process completed successfully file will be saved at specified DOWNLOAD_DIR path on .env file
     * report will be saved at [project root's directory]/report_TIMESTAMP.csv
