@@ -25,19 +25,19 @@ class PdfExtractor:
     def content_extract(self):
         pdf_content = self.pdf_input.extract_text()
         npsn = re.search(pattern="\d{8,9}", string=pdf_content).group()
-        date_pattern = "[0-9]+ [A-Za-z]+ [0-9]+"
-        p_no_cert = "PD\.(.*)"
-        p_ranking = "Terakreditasi\s[A-Za-z]"
+        date_pattern = r"[0-9]+ [A-Za-z]+ [0-9]+"
+        p_no_cert = r"PD\.(.*)"
+        p_ranking = r"Terakreditasi\s[A-Za-z]"
         no_cert = re.search(pattern=p_no_cert, string=pdf_content).group()
-        ranking = re.search(pattern='\s+[A-Za-a]', 
+        ranking = re.search(pattern=r'\s+[A-Za-a]', 
                             string=re.search(
                                 pattern=p_ranking, 
                                 string=pdf_content).group()).group().strip()
         match self._docs_format():
             case 'format_lama':
                 try:                    
-                    p_valid_until = "tanggal(\s([0-9]+ [A-Za-z]+\s)+)[0-9]+\s"
-                    p_validated_at = "Jakarta(\n([0-9]+ [A-Za-z]+\s)+)[0-9]+"
+                    p_valid_until = r"tanggal(\s([0-9]+ [A-Za-z]+\s)+)[0-9]+\s"
+                    p_validated_at = r"Jakarta(\n([0-9]+ [A-Za-z]+\s)+)[0-9]+"
                     s_valid_until = re.search(pattern=p_valid_until, string=pdf_content).group()
                     s_validated_at = re.search(pattern=p_validated_at, string=pdf_content).group()
                     valid_until = re.search(pattern=date_pattern, string=s_valid_until).group()
@@ -61,8 +61,8 @@ class PdfExtractor:
             
             case 'format_baru':
                 try:
-                    p_valid_until = "dengan tanggal(\s([0-9]+ [A-Za-z]+\s)+)[0-9]+\s"
-                    p_validated_at = "Pada tanggal [0-9]+ [A-Za-z]+ [0-9]+"
+                    p_valid_until = r"dengan tanggal(\s([0-9]+ [A-Za-z]+\s)+)[0-9]+\s"
+                    p_validated_at = r"Pada tanggal [0-9]+ [A-Za-z]+ [0-9]+"
                     s_valid_until = re.search(pattern=p_valid_until, string=pdf_content).group()
                     s_validated_at = re.search(pattern=p_validated_at, string=pdf_content).group()
                     valid_until = re.search(pattern=date_pattern, string=s_valid_until).group()
