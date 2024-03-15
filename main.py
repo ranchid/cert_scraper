@@ -107,7 +107,7 @@ def report_builder(file_path:str) -> list:
     logging.info(f"Report written with name report_{scrap_sess}.csv")
     # return report
 
-def main(datasource, batch_size:int, user:str, pswd:str, dl_path:str):
+def main(datasource, batch_size:int, user:str, pswd:str, dl_path:str, dl_timeout:float, print_timeout:float):
     list_id = data_input(datasource)
     download_list = download_checker(list_id, dl_path=dl_path)
     logging.info(f'START {scrap_sess}')
@@ -116,7 +116,7 @@ def main(datasource, batch_size:int, user:str, pswd:str, dl_path:str):
         dl_job = n_splitter(download_list['to_download'], batch_size)
         to_print = []
         for dl_batch in dl_job:
-            download_task = [scrap_cert.grab_certificate(owner_id=npsn, dirpath=dl_path, batch_to_timeout=len(dl_batch)) for npsn in dl_batch]
+            download_task = [scrap_cert.grab_certificate(owner_id=npsn, dirpath=dl_path, batch_to_timeout=dl_timeout*len(dl_batch)) for npsn in dl_batch]
             dl_stats = asyncio.run(job_aggregator(download_task))        
             dl_fail = [npsn['npsn'] for npsn in dl_stats if npsn.get('status') == 'FAILED']
             to_print += dl_fail
@@ -128,11 +128,11 @@ def main(datasource, batch_size:int, user:str, pswd:str, dl_path:str):
                     new_input = []
                     for batch in sc_job:
                         print_sess.login(username=user, password=pswd)
-                        printing_task = [scrap_cert.trigger_print(owner_id=element, auth_sess=print_sess.session.cookies, batch_to_timeout=len(batch)) for element in batch if element is not None]
+                        printing_task = [scrap_cert.trigger_print(owner_id=element, auth_sess=print_sess.session.cookies, batch_to_timeout=print_timeout*len(batch)) for element in batch if element is not None]
                         if len(printing_task) > 0:
                             print_agg = asyncio.run(job_aggregator(printing_task))
                             print_sess.logout()
-                            retry_download = [scrap_cert.grab_certificate(owner_id=npsn, dirpath=dl_path, batch_to_timeout=len(batch)) for npsn in print_agg]
+                            retry_download = [scrap_cert.grab_certificate(owner_id=npsn, dirpath=dl_path, batch_to_timeout=dl_timeout*len(batch)) for npsn in print_agg]
                             retry_stats = asyncio.run(job_aggregator(retry_download))
                             to_log = [npsn['npsn'] for npsn in retry_stats if npsn.get('status') == 'OK']
                             new_input += to_log
@@ -159,9 +159,11 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--batch', type=int, default=os.getenv('BATCH_SIZE'), help="[Optional] Override maximum n-value on .env per batch processing")
     parser.add_argument('-u', '--user', type=str, default=os.getenv('IDENTIFIER'), help="[Optional] Override .env's user/identifier")
     parser.add_argument('-p', '--password', type=str, default=os.getenv('SECRETS'), help="[Optional] Override .env's password/secrets")
+    parser.add_argument('-pt', '--print_timeout', type=float, default=os.getenv('PRINT_TIMEOUT'), help="[Optional] Override default timeout for print session")
+    parser.add_argument('-dt', '--download_timeout', type=float, default=os.getenv('DOWNLOAD_TIMEOUT'), help="[Optional] Override default timeout for download session")
     args = parser.parse_args()
     try:
-        main_process = main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password, dl_path=download_path)
+        main_process = main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password, dl_timeout=args.download_timeout, print_timeout=args.print_timeout, dl_path=download_path)
         if main_process == 'no_new_file':
             regen_report = input('No new file(s) detected,\nDo you still want to generate report file? (y|N) ')            
             if regen_report.casefold() == 'y':
