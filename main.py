@@ -3,15 +3,18 @@ import sys
 import logging
 import csv
 import asyncio
+import uuid
 from datetime import datetime
 
 from dotenv import load_dotenv
+from pypdf import errors
 
 from authsess_helper import LoginHelper
 from cert_grabber import CertGrabber
 from data_extractor import PdfExtractor
 
 now = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
+scrap_sess = uuid.uuid4()
 load_dotenv()
 logfile_handler = logging.FileHandler(filename="./scrap.log")
 logstream_handler = logging.StreamHandler(stream=sys.stdout)
@@ -26,6 +29,9 @@ cust_header = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,
 
 download_dir = os.getenv('DOWNLOAD_DIR')
 year_issued = os.getenv('YEAR_ISSUED')
+download_path = f"{os.getcwd()}/{download_dir}/{year_issued}"
+
+os.makedirs(download_path, exist_ok=True)
 
 
 url_login = os.getenv('URL_LOGIN')
@@ -53,6 +59,7 @@ async def job_aggregator(job_list):
 def data_input(filename):
     with open(filename, "r") as source:
         datasource = source.read().splitlines()
+        source.close()
     return datasource
 
 def n_splitter(input_list:list, divider:int) -> list:
@@ -73,7 +80,7 @@ def n_splitter(input_list:list, divider:int) -> list:
             task_q.append(input_list[head_rec:tail_rec])
         return task_q
     
-def download_checker(list_id:list, dl_path:str) -> list:
+def download_checker(list_id:list, dl_path:str) -> list:    
     files = {}
     files['to_download'] = []
     files['existing'] = [os.path.splitext(file)[0] for file in os.listdir(dl_path)]
@@ -87,69 +94,83 @@ def report_builder(file_path:str) -> list:
     report = []
     for ext_file in file_list:
         logging.info(f"Parsing data from {ext_file}")
-        report.append(PdfExtractor(ext_file).content_extract())
+        try:
+            report.append(PdfExtractor(ext_file).content_extract())
+        except errors.EmptyFileError:
+            logging.error(f'Document {ext_file} corrupt')
     fields = [k for k, v in report[0].items()]
-    with open (f"report_{now}.csv", "w") as csvfile:
+    with open (f"report_{scrap_sess}.csv", "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fields)
         writer.writeheader()
         writer.writerows(report)
         csvfile.close()
-    logging.info(f"Report written with name report_{now}.csv")
+    logging.info(f"Report written with name report_{scrap_sess}.csv")
     # return report
 
-def main(datasource, batch_size:int, user:str, pswd:str,
-         download_path:str=f"{os.getcwd()}/{download_dir}/{year_issued}",
-         write_report:str=None):
-    
-    if not os.path.exists(download_path):
-        os.makedirs(download_path)
-    
+def main(datasource, batch_size:int, user:str, pswd:str, dl_path:str):
     list_id = data_input(datasource)
-    download_list = download_checker(list_id, download_path)
-    message = "Terima kasih sudah berkunjung di HiHi Toys Shop"
+    download_list = download_checker(list_id, dl_path=dl_path)
+    logging.info(f'START {scrap_sess}')
     
     if len(download_list['to_download']) > 0:
-        if print_sess.login(user, pswd) == 200:
-            sc_job = n_splitter(download_list['to_download'], batch_size)
-            for batch in sc_job:
-                print_sess.logout()
-                print_sess.login(user, pswd)
-                printing_task = [scrap_cert.trigger_print(element, print_sess.session.cookies) for element in batch]
-                print_agg = asyncio.run(job_aggregator(printing_task))                
-                download_task = [scrap_cert.grab_certificate(cert, download_path) for cert in print_agg]
-                if len(download_task) > 0:
-                    _downloaded = asyncio.run(job_aggregator(download_task))
-                    downloaded = []
-                    for file in _downloaded:
-                        if file not in download_list['existing'] and file != None:
-                            downloaded.append(file)
-            if len(downloaded) > 0:
-                print("Generating report please wait...")
-                report_builder(download_path)                
-                return print(message)
-            return print("No new file(s) found")            
-        
-        logging.critical('Authentication Failed')    
-
+        dl_job = n_splitter(download_list['to_download'], batch_size)
+        to_print = []
+        for dl_batch in dl_job:
+            download_task = [scrap_cert.grab_certificate(owner_id=npsn, dirpath=dl_path, batch_to_timeout=len(dl_batch)) for npsn in dl_batch]
+            dl_stats = asyncio.run(job_aggregator(download_task))        
+            dl_fail = [npsn['npsn'] for npsn in dl_stats if npsn.get('status') == 'FAILED']
+            to_print += dl_fail
+        if len(to_print) > 0:
+            print(to_print)
+            match print_sess.login(username=user, password=pswd):
+                case 200:
+                    sc_job = n_splitter(to_print, batch_size)
+                    new_input = []
+                    for batch in sc_job:
+                        print_sess.login(username=user, password=pswd)
+                        printing_task = [scrap_cert.trigger_print(owner_id=element, auth_sess=print_sess.session.cookies, batch_to_timeout=len(batch)) for element in batch if element is not None]
+                        if len(printing_task) > 0:
+                            print_agg = asyncio.run(job_aggregator(printing_task))
+                            print_sess.logout()
+                            retry_download = [scrap_cert.grab_certificate(owner_id=npsn, dirpath=dl_path, batch_to_timeout=len(batch)) for npsn in print_agg]
+                            retry_stats = asyncio.run(job_aggregator(retry_download))
+                            to_log = [npsn['npsn'] for npsn in retry_stats if npsn.get('status') == 'OK']
+                            new_input += to_log
+                    if len(new_input) > 0:
+                        print("Generating report this may take a while...")
+                        report_builder(dl_path)
+                        logging.info(f'END {scrap_sess}')
+                    print("No new file(s) found")
+                    logging.info(f'END {scrap_sess}')
+                case _:
+                    logging.critical('Authentication Failed')
+                    logging.info(f'END {scrap_sess}')
+        report_builder(dl_path)
+        logging.info(f'END {scrap_sess}')
     else:
-        match write_report:
-            case 'y':
-                print("Generating report please wait...")
-                report_builder(download_path)                
-                return print(message)
-            case _:
-                return print(message)
+        return 'no_new_file'
+    
 
 if __name__ == "__main__":
     import argparse
+    os.makedirs(download_path, exist_ok=True)
     parser = argparse.ArgumentParser(description='Certificate Scrapper and Data Parser')
     parser.add_argument('filename', help="[Required] Specify filaname.txt that contains list of id to scrape")
     parser.add_argument('-n', '--batch', type=int, default=os.getenv('BATCH_SIZE'), help="[Optional] Override maximum n-value on .env per batch processing")
     parser.add_argument('-u', '--user', type=str, default=os.getenv('IDENTIFIER'), help="[Optional] Override .env's user/identifier")
     parser.add_argument('-p', '--password', type=str, default=os.getenv('SECRETS'), help="[Optional] Override .env's password/secrets")
     args = parser.parse_args()
-    answer = input('No new file(s) detected,\nDo you still want to generate report file? (y|N) ')
     try:
-        main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password, write_report=answer)
+        main_process = main(datasource=args.filename, batch_size=args.batch, user=args.user, pswd=args.password, dl_path=download_path)
+        if main_process == 'no_new_file':
+            regen_report = input('No new file(s) detected,\nDo you still want to generate report file? (y|N) ')            
+            if regen_report.casefold() == 'y':
+                print("Generating report please wait...")
+                report_builder(download_path)                
+                logging.info(f'END {scrap_sess}')
+            else:
+                print('message')
     except KeyboardInterrupt:
-        logging.warning('Process interupted by user')
+        logging.warning(f"Process {scrap_sess} prematurely ended by user")
+    
+
