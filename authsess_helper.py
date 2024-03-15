@@ -1,4 +1,5 @@
 import httpx
+from bs4 import BeautifulSoup
 
 class LoginHelper:
     """
@@ -37,9 +38,12 @@ class LoginHelper:
         * **username**-*[Required]* user/id/email
         * **password**-*[Required]* password/token/credential
         """
+        __dummy_bait = self.session.get(self.url_fail).content
+        token_brutal= BeautifulSoup(__dummy_bait, features='html.parser').find('input').get('value')
         auth_data = {}
-        auth_data['username'] = str(username)
-        auth_data['password'] = str(password)       
+        auth_data['sispena_csrf'] = token_brutal
+        auth_data['vnrtgugoiuwcru'] = str(username)
+        auth_data['oncgbuwmrcwuhr'] = str(password)       
         send_auth = self.session.post(url=self.url_login, data=auth_data)        
         return self.check_auth(send_auth, self.login_success)
 
