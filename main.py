@@ -13,8 +13,8 @@ from authsess_helper import LoginHelper
 from cert_grabber import CertGrabber
 from data_extractor import PdfExtractor
 
-now = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
-scrap_sess = uuid.uuid4()
+# now = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
+scrap_sess = round(datetime.now().astimezone().timestamp())
 load_dotenv()
 logfile_handler = logging.FileHandler(filename="./scrap.log")
 logstream_handler = logging.StreamHandler(stream=sys.stdout)
