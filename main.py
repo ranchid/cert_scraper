@@ -99,7 +99,7 @@ def report_builder(file_path:str) -> list:
         except errors.EmptyFileError:
             logging.error(f'Document {ext_file} corrupt')
     fields = [k for k, v in report[0].items()]
-    with open (f"report_{scrap_sess}.csv", "w") as csvfile:
+    with open (file=f"report_{scrap_sess}.csv", mode="w", newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fields)
         writer.writeheader()
         writer.writerows(report)
