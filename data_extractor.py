@@ -11,16 +11,6 @@ class PdfExtractor:
         self.pdf_path = f_input
         self.pdf_input = PdfReader(self.pdf_path).pages[0]
     
-    def _docs_format(self):
-        size = self.pdf_input.mediabox
-        match size.height:
-            case 595.276:
-                message = 'format_lama'
-                return message
-            case 841.89:
-                message = 'format_baru'
-                return message
-    
     def content_extract(self):
         pdf_content = self.pdf_input.extract_text()
         npsn = re.search(pattern="\d{8,9}", string=pdf_content).group()
@@ -32,8 +22,10 @@ class PdfExtractor:
                             string=re.search(
                                 pattern=p_ranking, 
                                 string=pdf_content).group()).group().strip()
-        match self._docs_format():
-            case 'format_lama':                        
+        size = self.pdf_input.mediabox
+        # match self._docs_format():
+        match size.height:
+            case 595.276:                        
                 p_valid_until = r"tanggal(\s([0-9]+ [A-Za-z]+\s)+)[0-9]+\s"
                 p_validated_at = r"Jakarta(\n([0-9]+ [A-Za-z]+\s)+)[0-9]+"
                 locale.setlocale(locale.LC_ALL, 'id_ID')
@@ -58,13 +50,13 @@ class PdfExtractor:
                     'ranking': ranking,
                     'validated_at': d_validated_at,
                     'valid_until': d_valid_until,
-                    'cert_model': self._docs_format(),
+                    'cert_model': 'format_lama',
                     'filepath': self.pdf_path
                     }
                 
                 return extracted_data                
             
-            case 'format_baru':                
+            case 841.89:                
                 p_valid_until = r"dengan tanggal(\s([0-9]+ [A-Za-z]+\s)+)[0-9]+\s"
                 p_validated_at = r"Pada tanggal [0-9]+ [A-Za-z]+ [0-9]+"
                 locale.setlocale(locale.LC_ALL, 'id_ID')
@@ -89,7 +81,7 @@ class PdfExtractor:
                     'ranking': ranking,
                     'validated_at': d_validated_at,
                     'valid_until': d_valid_until,
-                    'cert_model': self._docs_format(),
+                    'cert_model': 'format_baru',
                     'filepath': self.pdf_path
                     }
                 
